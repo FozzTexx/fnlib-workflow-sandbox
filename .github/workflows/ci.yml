@@ -10,25 +10,33 @@ jobs:
     container:
       image: fozztexx/defoogi:1.4.2
 
+    outputs:
+      files: ${{ steps.list_zips.outputs.files }}
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Build release files
         run: make release
 
-      # Upload each .zip separately
-      - name: Upload zips individually
+      - name: List zip files
+        id: list_zips
         run: |
-          for zip in dist/*.zip; do
-            echo "Uploading $zip"
-            # Each zip gets uploaded separately
-            gh-actions-upload() {
-              local file=$1
-              name=$(basename "$file")
-              echo "Uploading $name..."
-              # Call upload-artifact action for this single file
-              # Because we cannot loop 'uses', we spawn a subprocess via separate workflow run
-              gh workflow run dummy-upload.yml --ref $GITHUB_REF
-            }
-            gh-actions-upload "$zip"
-          done
+          # Generate JSON array of filenames
+          files=$(ls dist/*.zip | xargs -n1 basename | jq -R -s -c 'split("\n")[:-1]')
+          echo "files=$files" >> $GITHUB_OUTPUT
+
+  upload:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        file: ${{ fromJson(needs.build.outputs.files) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.file }}
+          path: dist/${{ matrix.file }}
