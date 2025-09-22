@@ -21,6 +21,7 @@ jobs:
 
       - name: List zip files
         id: list_zips
+	shell: bash
         run: |
           shopt -s nullglob
           files=(dist/*.zip)
