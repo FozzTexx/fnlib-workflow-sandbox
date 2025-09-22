@@ -51,3 +51,66 @@ jobs:
         with:
           name: ${{ matrix.file }}
           path: dist/${{ matrix.file }}
+
+  tagged-release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@v4
+
+      # Download the dist folder from the build job
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      # Create GitHub Release for the tag
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Upload each zip as a release asset
+      - name: Upload release assets
+        run: |
+          for zip in dist/*.zip; do
+            echo "Uploading $zip..."
+            gh release upload ${{ github.ref_name }} "$zip"
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  push-changelog:
+    name: "Push Change Log"
+    needs: tagged-release
+    runs-on: ubuntu-latest
+    env:
+      TAG_NAME: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Save commits to change log
+        run: git log $(git describe --tags --abbrev=0 @^ 2> /dev/null)..@ --oneline > CHANGE.log
+
+      - name: Upload Change Log
+        uses: actions/upload-artifact@v4
+        with:
+          name: CHANGE.log
+          path: CHANGE.log
+
+      - name: Push Change log to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          files: CHANGE.log
