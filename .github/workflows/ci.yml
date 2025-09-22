@@ -22,9 +22,18 @@ jobs:
       - name: List zip files
         id: list_zips
         run: |
-          # Generate JSON array of filenames
-          files=$(ls dist/*.zip | xargs -n1 basename | jq -R -s -c 'split("\n")[:-1]')
+          if compgen -G "dist/*.zip" > /dev/null; then
+            files=$(ls dist/*.zip | xargs -n1 basename | jq -R -s -c 'split("\n")[:-1]')
+          else
+            files="[]"
+          fi
           echo "files=$files" >> $GITHUB_OUTPUT
+
+      - name: Upload dist folder for next job
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
 
   upload:
     needs: build
@@ -35,7 +44,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Upload artifact
+      - name: Download dist folder
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Upload individual artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.file }}
