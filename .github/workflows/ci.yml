@@ -22,12 +22,16 @@ jobs:
       - name: List zip files
         id: list_zips
         run: |
-          if compgen -G "dist/*.zip" > /dev/null; then
-            files=$(ls dist/*.zip | xargs -n1 basename | jq -R -s -c 'split("\n")[:-1]')
-          else
-            files="[]"
-          fi
-          echo "files=$files" >> $GITHUB_OUTPUT
+          shopt -s nullglob
+          files=(dist/*.zip)
+          # Remove directory from filenames
+          for i in "${!files[@]}"; do
+            files[$i]=$(basename "${files[$i]}")
+          done
+          # Convert to JSON array
+          printf -v files_json '%s,' "${files[@]}"
+          files_json="[${files_json%,}]"
+          echo "files=$files_json" >> $GITHUB_OUTPUT
 
       - name: Upload dist folder for next job
         uses: actions/upload-artifact@v4
