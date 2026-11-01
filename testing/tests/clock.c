@@ -25,10 +25,6 @@
 #define EXPECTED_SHORT       (WAIT_SHORT_SECS * HUNDREDTHS_PER_SEC)
 #define EXPECTED_LONG        (WAIT_LONG_SECS * HUNDREDTHS_PER_SEC)
 #define EXPECTED_DIFF        (EXPECTED_LONG - EXPECTED_SHORT)
-#ifdef UNUSED
-#define SECS_PER_MIN         60UL
-#define MINS_PER_HOUR        60UL
-#endif /* UNUSED */
 
 void test_clock_tz(void)
 {
